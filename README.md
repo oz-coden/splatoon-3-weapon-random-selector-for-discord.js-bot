@@ -1,0 +1,1 @@
+# splatoon-3-weapon-random-selector-for-discord-bot
