@@ -1,4 +1,4 @@
-# Splatoon 3 Weapon Random Selector for Discord Botn Randomizer
+# Splatoon 3 Weapon Random Selector for Discord Bot Randomizer
 
 Splatoon 3 Ver. 11.2.0対応の、ブキをランダムに選んでくれるNode.jsで動作するDiscord Botです。
 
