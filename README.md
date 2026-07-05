@@ -29,7 +29,7 @@ That is reason why I made it.
 
 ## Features
 
-- `wrc` Command  
+- `wrs` Command  
 This provides a function which select weapon ramdomly.  
 There is a mode which you can choose from a limited selection of weapon types.  
 
@@ -94,7 +94,7 @@ Discord上でSplatoon 3バージョン11.2.0に存在するブキをランダム
 
 ## 機能
 
-- `wrc` コマンド  
+- `wrs` コマンド  
 これは、ブキをランダムに選択する機能を提供します。  
 限られた種類のブキの中から選択できるモードもあります。 
 
