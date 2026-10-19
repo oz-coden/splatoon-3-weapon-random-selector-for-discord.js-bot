@@ -1,15 +1,6 @@
-const express = require("express");
-const app = express();
-const { Client, GatewayIntentBits } = require("discord.js");
-const { EmbedBuilder } = require("@discordjs/builders");
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers,
-  ],
-});
+const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
+const { loadConfig } = require("./config.js");
+const { startBot } = require("./runtime.js");
 
 const commands = [
   {
@@ -44,35 +35,64 @@ const commands = [
   },
 ];
 
-const splatoon3WeaponSystem = require("./functions/splatoon3weapon.js");
+function createClient() {
+  const client = new Client({
+    intents: [
+      GatewayIntentBits.Guilds,
+    ],
+  });
 
-app.listen(3000, () => {
-  console.log("Program is running!");
-});
-app.get("/", (req, res) => {
-  res.send("<h1>Hello World!</h1>");
-});
+  const splatoon3WeaponSystem = require("./splatoon3weapon.js");
 
-client.once("clientReady", async () => {
-  await client.application.commands.set(commands);
-  console.log("Ready!");
-});
+  client.on("interactionCreate", async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
 
-client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
+    try {
+      if (interaction.commandName == "ping") {
+        const embed = new EmbedBuilder()
+          .setColor([0, 0, 255])
+          .setTitle("Pong!")
+          .addFields({ name: "検証結果", value: client.ws.ping + "ミリ秒" })
+          .setTimestamp();
+        await interaction.reply({ embeds: [embed] });
+      } else if (interaction.commandName == "wrs") {
+        const mode = interaction.options.getString("mode");
+        const resultMessage = splatoon3WeaponSystem.getRandomWeaponResult(mode);
+        await interaction.reply(resultMessage);
+      }
+    } catch (error) {
+      console.error("Failed to handle interaction:", error.message);
+    }
+  });
 
-  if (interaction.commandName == "ping") {
-    const embed = new EmbedBuilder()
-      .setColor([0, 0, 255])
-      .setTitle("Pong!")
-      .addFields({ name: "検証結果", value: client.ws.ping + "ミリ秒" })
-      .setTimestamp();
-    await interaction.reply({ embeds: [embed] });
-  } else if (interaction.commandName == "wrs") {
-    const mode = interaction.options.getString("mode");
-    const resultMessage = splatoon3WeaponSystem.getRandomWeaponResult(mode);
-    await interaction.reply(resultMessage);
+  return client;
+}
+
+async function main() {
+  let config;
+  try {
+    config = loadConfig();
+  } catch (error) {
+    console.error("Configuration error:", error.message);
+    process.exitCode = 1;
+    return;
   }
-});
+  if (process.argv.includes("--check")) {
+    const client = createClient();
+    await client.destroy();
+    console.log("Configuration and bot modules are valid. No Discord connection was made.");
+    return;
+  }
+  await startBot({ client: createClient(), commands, config });
+}
 
-client.login(process.env.token);
+if (require.main === module) {
+  main().catch((error) => {
+    // Do not print Discord request objects: they may contain credentials.
+    console.error("Bot startup failed:", error.code || error.name);
+    console.error("Check DISCORD_TOKEN, PORT, the .env file, network access, and the Discord Developer Portal settings.");
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { createClient, commands };
