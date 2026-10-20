@@ -1,132 +1,193 @@
 # Splatoon 3 Weapon Random Selector for Discord Bot
 
-Japanese section is [available](#目次) in below this section.
+[日本語の説明](#日本語) · [English](#english)
 
-## Table of Contents
+## English
 
-1. [Summary](#summary)
-2. [Background of Development](#background-of-development)
-3. [Features](#features)
-4. [Usage](#usage)
-5. [Requirements, Dependencies](#requirements-dependencies)
-6. [Installation](#installation)
-7. [Setting](#setting)
-8. [LICENSE](#license)
-9. [CREDIT](#credit)
+Randomly selects a Splatoon 3 weapon with `/wrs`, optionally restricted to a weapon category. The bundled Japanese weapon list targets game version 11.2.0; it is not updated automatically.
 
-## Summary
+### Requirements
 
-This contains Japanese Splatoon Weapon Name!  
-So if you want to use in English, you need to replace the name in `main.js` and `splatoon3weapon.js`.  
+- **Node.js 24.17.0 or newer** with npm. Node.js 24 LTS is recommended; `.nvmrc` selects major version 24 when using nvm.
+- Windows, macOS, or Linux with outbound HTTPS/WebSocket access to Discord and HTTPS access to npm for installation. No inbound port or database is required for normal operation.
+- A Discord application with a bot token, and permission to install it in your server.
+- Runtime dependency: `discord.js`, pinned by `package-lock.json`. No Replit-specific services are used.
 
-This is a Discord bot written in Node.js that randomly selects weapons compatible with Splatoon 3 Version 11.2.0 on Discord.
+### Discord setup
 
-## Background of Development
+1. Open the [Discord Developer Portal](https://discord.com/developers/applications), create an application, and open its **Bot** page.
+2. Generate/reset the bot token and keep it private. Use the bot token, not the client secret or public key.
+3. No privileged Gateway Intents are required. Message Content Intent, Server Members Intent, and Presence Intent can remain disabled.
+4. Open **OAuth2 → URL Generator**, select the **bot** and **applications.commands** scopes, and select these bot permissions: **View Channels, Send Messages, and Embed Links**. Administrator permission is unnecessary.
+5. Open the generated URL and install the bot in your server. Channel overrides must also allow the required permissions. For threads, grant Send Messages in Threads where needed.
 
-Splatoon 3 doesn't have a feature that lets you choose weapons at random.  
-Sometimes I just want to play without being limited to the weapons I usually use.  
-That is reason why I made it.
+Use a separate Discord application/token for each bot. On startup, each bot replaces its own application's global slash commands; sharing one application causes the command lists to overwrite each other.
 
-## Features
+### Install and run
 
-- `wrs` Command  
-This provides a function which select weapon ramdomly.  
-There is a mode which you can choose from a limited selection of weapon types.  
+1. Install [Node.js](https://nodejs.org/en/download), then confirm `node --version` is at least 24.17.0 and `npm --version` works.
+2. Clone this repository and open its directory:
 
-## Usage
+   ```sh
+   git clone https://github.com/oz-coden/splatoon-3-weapon-random-selector-for-discord.js-bot.git
+   cd splatoon-3-weapon-random-selector-for-discord.js-bot
+   npm ci
+   ```
 
-You can use commands in below:
-|Command|Description|Example|
-|---|---|---|
-|/wrs|Select a weapon ramdomly.|/wrs|
-|/wrs &lt;mode&gt;|Select a weapon ramdomly from a limited selection of weapon types.|/wrs mode:shooter_mode|
+   A GitHub ZIP download also works: extract it, open a terminal in the folder containing `package.json`, and run `npm ci`.
+3. Copy `.env.example` to `.env` in that same folder. On Linux/macOS run `cp .env.example .env`; on Windows PowerShell run `Copy-Item .env.example .env`. A text editor can also create the file; ensure the name is `.env`, not `.env.txt`.
+4. Set `DISCORD_TOKEN=your_bot_token` in `.env`. Leave `PORT` blank unless your hosting service requires an HTTP listener.
+5. Run these commands:
 
-## Requirements, Dependencies
+   ```sh
+   npm run check
+   npm start
+   ```
 
-1. Discord Server
-2. Node.js V18 or newer  
-3. Discord Bot Token  
-You can obtain token from Discord Developer Portal.
+   `check` validates the local configuration and loads bot modules **without connecting to Discord**. It does not validate the token with Discord. After `Ready!` appears during normal startup, try `/ping` in your server. Global slash commands may take time to appear. Stop with Ctrl+C.
 
-## Installation
+You can also run `node /absolute/path/to/main.js` from another directory: `.env` is always resolved beside `main.js`. On a hosting service, set the environment variables in its dashboard and use `npm ci --omit=dev` for installation and `npm start` for startup. The process needs to remain running; request-only serverless hosting is unsuitable for this Gateway bot.
 
-You'll need a Node.js environment.  
-Once you've set that up, use the files in the repository and download the necessary packages according to the package instructions.  
+### Environment variables
 
-## Setting
+| Variable | Required / default | Meaning |
+| --- | --- | --- |
+| `DISCORD_TOKEN` | Required | Discord bot token |
+| `token` | Legacy fallback | Used when `DISCORD_TOKEN` is empty or unset; retained for existing deployments |
+| `PORT` | Unset / empty: HTTP disabled | Optional integer from 1 to 65535 for the HTTP health endpoint |
+| `HOST` | `0.0.0.0` | HTTP bind address; use `127.0.0.1` for local-only access |
 
-To execute, you need to write your Discord token information in the .env file.
+Host environment variables take precedence over the same variables in `.env`. Keep `.env` private; it is excluded from Git and Docker builds. Never put a token in source code, a Dockerfile, or a committed configuration file.
 
-## LICENSE
+If `PORT` is configured, `GET /` and `GET /health` return 200 only after Discord is ready and slash commands have registered; they return 503 while unavailable. These endpoints report status and do not prevent a hosting provider from sleeping the process. For two bots on one machine, leave HTTP disabled or choose a different port for each.
 
-This project is released under the MIT License.  
+### Docker (optional)
 
-## CREDIT
+With Docker installed, run from this repository's directory after creating `.env`:
 
-Thanks for Splatoon 3!  
-Note: I have no relationship with Splatoon 3 and Nintendo.
+```sh
+docker build -t splatoon-bot .
+docker run -d --name splatoon-bot --restart unless-stopped --env-file .env splatoon-bot
+docker logs -f splatoon-bot
+```
+
+The container runs as a non-root user. Its token is supplied at runtime and is not included in the image. No port mapping is needed unless you enabled HTTP; for `PORT=3000`, add `-p 127.0.0.1:3000:3000` to `docker run`. To stop/remove it, run `docker stop splatoon-bot` and `docker rm splatoon-bot`.
+
+### Usage
+
+| Command | Result |
+| --- | --- |
+| `/wrs` | Select from all bundled weapons |
+| `/wrs mode:シューター限定` | Select from the chosen category |
+| `/ping` | Report Gateway latency |
+
+Select the mode from Discord's choices. All 11 weapon categories are supported. Names and replies are Japanese; edit `splatoon3weapon.js` and the command/reply text in `main.js` to localize them.
+
+### Troubleshooting and development
+
+- Startup exits immediately: check `DISCORD_TOKEN` and `PORT`. Authentication failures or Gateway intent errors also exit with a nonzero code. Runtime errors omit full Discord request objects to avoid logging credentials.
+- `EADDRINUSE`: another process already uses the configured port. Change `PORT` or leave it empty.
+- Online but no commands: check the application/token, installation scopes, and command permissions; allow time for global command propagation.
+- `/wrs` uses only the bundled weapon list. Update `splatoon3weapon.js` when adding new weapons.
+- Run `npm test` for offline configuration, startup, and bot behavior checks. CI runs them on Windows/macOS/Linux with Node.js 24 and 26. These tests do not exercise a real Discord connection.
+- Update dependencies intentionally and commit `package-lock.json`; use `npm ci` for reproducible installs. SIGINT/SIGTERM close the Discord client and optional HTTP listener.
 
 ---
 
-# Splatoon 3 Weapon Random Selector for Discord Bot
+## 日本語
 
-## 目次
+`/wrs` でSplatoon 3のブキをランダムに選ぶBot。ブキ種ごとの絞り込みにも対応。収録済みの日本語ブキリストはゲームのバージョン11.2.0を対象としていて、自動更新はされない。
 
-1. [概要](#概要)
-2. [開発背景](#開発背景)
-3. [機能](#機能)
-4. [使い方](#使い方)
-5. [前提・依存](#前提依存)
-6. [導入方法](#導入方法)
-7. [設定](#設定)
-8. [ライセンス](#ライセンス)
-9. [クレジット](#クレジット)
+### 前提条件
 
-## 概要
+- **Node.js 24.17.0以上**とnpm。Node.js 24 LTSを推奨。nvmを使う場合は `.nvmrc` で24系を選択できる。
+- Windows／macOS／Linux。DiscordへのHTTPS・WebSocket接続と、インストール時のnpmへのHTTPS接続が必要。通常動作に受信ポートやデータベースは不要。
+- DiscordアプリケーションのBotトークンと、導入先サーバーにBotを追加する権限。
+- 実行時の依存は `discord.js`。`package-lock.json` で固定し、Replit固有のサービスには依存しない。
 
-Discord上でSplatoon 3バージョン11.2.0に存在するブキをランダムに選択してその内容を送信するためのNode.jsで動作するDiscord Botです。
+### Discord側の設定
 
-## 開発背景
+1. [Discord Developer Portal](https://discord.com/developers/applications) でアプリケーションを作成し、**Bot** ページを開く。
+2. Botトークンを生成／再発行して控える。Client SecretやPublic Keyではなく、Botのトークンを使う。
+3. 特権Gateway Intentは不要。Message Content Intent、Server Members Intent、Presence Intent は無効のままで使える。
+4. **OAuth2 → URL Generator** で **bot** と **applications.commands** を選択し、Bot権限に **View Channels, Send Messages, and Embed Links** を指定する。Administrator権限は不要。
+5. 生成されたURLを開いてサーバーに導入する。チャンネル個別の権限上書きでも必要な権限を許可する。スレッドで送信する場合は Send Messages in Threads も許可する。
 
-『スプラトゥーン3』には、武器をランダムに選べる機能がありません。  
-たまには、普段使っている武器に縛られずにプレイしたい時もあるでしょう。  
-それを解消するためにこれを作ることにしました。
+**引用BotとSplatoon Botには別々のアプリケーション／トークンを使う。** 起動時に自身のアプリケーションのグローバルスラッシュコマンドを置き換えるため、同じものを共有すると互いのコマンドを上書きしてしまう。
 
-## 機能
+### 導入・起動手順
 
-- `wrs` コマンド  
-これは、ブキをランダムに選択する機能を提供します。  
-限られた種類のブキの中から選択できるモードもあります。 
+1. [Node.js](https://nodejs.org/en/download) をインストールし、`node --version` が24.17.0以上であること、`npm --version` が動くことを確認する。
+2. リポジトリを取得し、そのディレクトリで依存をインストールする。
 
-## 使い方
+   ```sh
+   git clone https://github.com/oz-coden/splatoon-3-weapon-random-selector-for-discord.js-bot.git
+   cd splatoon-3-weapon-random-selector-for-discord.js-bot
+   npm ci
+   ```
 
-以下のコマンドを使用できます：  
-|コマンド|説明|例|
-|---|---|---|
-|/wrs|ブキをランダムに選択します。|/wrs|
-|/wrs &lt;mode&gt;|指定されたブキタイプの中から、ランダムにブキを選択します。|/wrs mode:shooter_mode|
+   ZIPでダウンロードした場合も、展開後に `package.json` のあるフォルダーでターミナルを開いて `npm ci` を実行すればよい。
+3. 同じフォルダーの `.env.example` を `.env` にコピーする。Linux／macOSでは `cp .env.example .env`、Windows PowerShellでは `Copy-Item .env.example .env` を実行する。エディターで作成してもよいが、`.env.txt` にしないよう注意する。
+4. `.env` に `DISCORD_TOKEN=自分のBotトークン` を設定する。ホスティング側でHTTP待受が必要でなければ `PORT` は空欄にしておく。
+5. 設定を確認してから起動する。
 
-## 前提・依存
+   ```sh
+   npm run check
+   npm start
+   ```
 
-1. Discord サーバー
-2. Node.js V18 以降  
-3. Discord ボットトークン  
-トークンは Discord Developer Portal から取得できます。
+   `check` はローカルの設定とモジュール読み込みを確認し、**Discordには接続しない**。トークンの有効性は確認しない。通常起動で `Ready!` が表示されたら、サーバーで `/ping` を実行する。グローバルコマンドの反映には時間がかかる場合がある。終了はCtrl+C。
 
-## 導入方法
+別ディレクトリから `node /絶対パス/main.js` と実行しても、`.env` は常に `main.js` と同じ場所から読み込む。ホスティングでは管理画面の環境変数で設定し、インストールコマンドに `npm ci --omit=dev`、起動コマンドに `npm start` を指定できる。Gateway接続を維持する常駐プロセスが必要なので、リクエスト時だけ実行されるサーバーレス環境には適さない。
 
-Node.js 環境が必要です。  
-環境設定が完了したら、リポジトリ内のファイルを使用し、パッケージの指示に従って必要なパッケージをダウンロードしてください。 
+### 環境変数
 
-## 設定
+| 変数 | 必須・既定値 | 説明 |
+| --- | --- | --- |
+| `DISCORD_TOKEN` | 必須 | DiscordのBotトークン |
+| `token` | 旧設定の互換用 | `DISCORD_TOKEN` が空欄／未設定の場合に使う |
+| `PORT` | 未設定／空欄でHTTP無効 | HTTPヘルスチェックを有効にする場合は1〜65535の整数 |
+| `HOST` | `0.0.0.0` | HTTP待受アドレス。ローカル限定にする場合は `127.0.0.1` |
 
-実行するには、.env ファイルに Discord のトークン情報を記述する必要があります。
+同じ変数が両方にある場合、ホスト側の環境変数が `.env` より優先される。`.env` はGit・Dockerビルドの対象外。トークンをソースコードやDockerfile、コミットする設定ファイルに記載しない。
 
-## ライセンス
+`PORT` を設定すると `GET /` と `GET /health` が有効になる。Discordの接続とコマンド登録が完了していれば200、利用不可の間は503を返す。稼働状態を示す機能なので、ホスティングサービス側のスリープを防ぐものではない。同じマシンで2つのBotを動かす場合はHTTPを無効にするか、別々のポートを指定する。
 
-This project is released under the MIT License.  
+### Dockerで起動する場合
 
-## クレジット
+Dockerをインストールし、`.env` を用意してからリポジトリのディレクトリで実行する。
 
-Thanks for Splatoon 3!  
-Note: I have no relationship with Splatoon 3 and Nintendo.
+```sh
+docker build -t splatoon-bot .
+docker run -d --name splatoon-bot --restart unless-stopped --env-file .env splatoon-bot
+docker logs -f splatoon-bot
+```
+
+コンテナー内では非rootユーザーで実行する。トークンは実行時に渡し、イメージには含めない。HTTPを有効にしていなければポート公開は不要。`PORT=3000` の場合は `docker run` に `-p 127.0.0.1:3000:3000` を追加する。停止は `docker stop splatoon-bot`、削除は `docker rm splatoon-bot`。
+
+### 使い方
+
+| コマンド | 動作 |
+| --- | --- |
+| `/wrs` | 収録済みの全ブキから選ぶ |
+| `/wrs mode:シューター限定` | 指定したブキ種から選ぶ |
+| `/ping` | Gatewayの遅延を表示する |
+
+modeはDiscordに表示される選択肢から選ぶ。全11種類のブキ種に対応。ブキ名や応答は日本語で、翻訳する場合は `splatoon3weapon.js` と `main.js` を編集する。
+
+### トラブル対応・開発
+
+- 起動直後に終了する場合は、`DISCORD_TOKEN` と `PORT` を確認する。認証失敗やGateway Intentのエラーでも異常終了する。認証情報をログに出さないため、Discordリクエスト全体は出力しない。
+- `EADDRINUSE` はポートの競合。`PORT` を変更するか空欄にする。
+- オンラインなのにコマンドがない場合は、アプリケーション／トークン、導入時のスコープ、コマンドの権限を確認する。グローバルコマンドの反映時間も考慮する。
+- `/wrs` は収録済みブキだけが対象。ブキの追加は `splatoon3weapon.js` で行う。
+- `npm test` で設定・起動処理・Botの動作をオフライン検証できる。CIはWindows／macOS／LinuxとNode.js 24・26で実行する。実際のDiscord接続はテスト対象外。
+- 依存を更新するときは `package-lock.json` もコミットする。普段の導入には `npm ci` を使う。SIGINT／SIGTERMを受け取るとDiscord接続とHTTP待受を終了する。
+
+## License
+
+This project is released under the [MIT License](LICENSE).
+
+## Credit
+
+Thanks for Splatoon 3! This project is not affiliated with Nintendo.
